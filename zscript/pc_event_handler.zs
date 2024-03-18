@@ -94,8 +94,12 @@ class pc_EventHandler : EventHandler
 
     FLineTraceData data;
     double hitHeight = a.height / 2 + a.AttackZOffset * p.crouchFactor;
-    _hasTargetPos    = a.LineTrace(angle, 4000.0, pitch, lFlags, hitHeight, 0, 0, data);
-    if (_hasTargetPos) { _targetPos = data.hitlocation; }
+    _hasTargetPos    = a.LineTrace(angle, 4000.0, pitch, 0, hitHeight, 0, 0, data);
+    if (_hasTargetPos) 
+    { 
+      _targetPos = data.hitlocation; 
+      _distToTarget = data.distance;
+    }
   }
 
 // private: ////////////////////////////////////////////////////////////////////
@@ -130,8 +134,14 @@ class pc_EventHandler : EventHandler
     if (crosshairgrow) { size *= StatusBar.CrosshairSize; }
 
     Vector2 textureSize = TexMan.GetScaledSize(_crosshairTexture);
-    int width  = int(textureSize.x * size);
-    int height = int(textureSize.y * size);
+    double width  = textureSize.x * size;
+    double height = textureSize.y * size;
+    if (_settings.isScaledByDistance())
+    {
+      double distFac = GetDistanceScale(0, 512);
+      width *= distFac;
+      height *= distFac;
+    }
 
     bool hasHealth;
     int  health, maxHealth;
@@ -144,8 +154,8 @@ class pc_EventHandler : EventHandler
                       , false
                       , screenWidth / 2
                       , _yPositionInterpolator.GetValue()
-                      , DTA_DestWidth    , width
-                      , DTA_DestHeight   , height
+                      , DTA_DestWidthF    , width
+                      , DTA_DestHeightF   , height
                       , DTA_AlphaChannel , true
                       , DTA_KeepRatio    , true
                       , DTA_FillColor    , crossColor & 0xFFFFFF
@@ -341,6 +351,17 @@ class pc_EventHandler : EventHandler
     _externalY.SetFloat(y);
   }
 
+  private play
+  void setExternalScale (PlayerInfo player, double scale) const
+  {
+    if (_externalScale == NULL)
+    {
+      _externalScale = Cvar.GetCVar("pc_scale", player);
+    }
+
+    _externalScale.SetFloat(scale);
+  }
+
 // private: ////////////////////////////////////////////////////////////////////
 
   private ui static
@@ -441,10 +462,31 @@ class pc_EventHandler : EventHandler
     default:    r = v; g = p; b = q; break;
     }
   }
+  
+  private static clearscope
+  double LinearMap(double val, double source_min, double source_max, double out_min, double out_max) 
+  {
+    return (val - source_min) * (out_max - out_min) / (source_max - source_min) + out_min;
+  }
+
+  private ui
+  double GetDistanceScale(double minDist = 0, double maxDist = 1024, double minScale = 1.0, double maxScale = 4.0)
+  {
+    double scale = minScale;
+    if (_distToTarget < maxDist)
+    {
+      double dist = Clamp(_distToTarget, minDist, maxDist);
+      scale = LinearMap(dist, maxdist, mindist, minscale, maxscale);
+    }
+    setExternalScale(players[consoleplayer], scale);
+    return scale;
+  }
+    
 
 // private: ////////////////////////////////////////////////////////////////////
 
   private Vector3          _targetPos;
+  private double           _distToTarget;
   private bool             _hasTargetPos;
 
   private ui int           _crosshairNum;
@@ -455,6 +497,7 @@ class pc_EventHandler : EventHandler
   private transient bool   _isPrepared;
   private transient Cvar   _cvarRenderer;
   private transient Cvar   _externalY;
+  private transient Cvar   _externalScale;
 
   private pc_Le_ProjScreen _projection;
   private pc_Le_GlScreen   _glProjection;
@@ -463,9 +506,5 @@ class pc_EventHandler : EventHandler
   private pc_Settings      _settings;
 
   private DynamicValueInterpolator _yPositionInterpolator;
-
-// private: ////////////////////////////////////////////////////////////////////
-
-  const lFlags = LAF_NOIMPACTDECAL | LAF_NORANDOMPUFFZ;
 
 } // class pc_EventHandler : EventHandler
