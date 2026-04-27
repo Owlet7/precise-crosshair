@@ -203,7 +203,7 @@ class pc_EventHandler : EventHandler
       return crosshaircolor;
     }
 
-    if (crosshairhealth == 1)
+    if (crosshaircolors == 1)
     {
       // "Standard" crosshair health (green-red)
       int health = scale(health, 100, maxHealth);
@@ -232,7 +232,7 @@ class pc_EventHandler : EventHandler
         return (red<<16) | (green<<8);
       }
     }
-    else if (crosshairhealth == 2)
+    else if (crosshaircolors == 2)
     {
       // "Enhanced" crosshair health (blue-green-yellow-red)
       int health = clamp(scale(health, 100, maxHealth), 0, 200);
